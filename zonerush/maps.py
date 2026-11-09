@@ -51,3 +51,4 @@ def load_map(path) -> tuple[tuple[int, ...], ...]:
     grid = parse_map(text)
     check_mirrored(grid)
     return grid
+
