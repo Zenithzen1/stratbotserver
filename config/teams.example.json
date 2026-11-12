@@ -1,0 +1,50 @@
+{
+  "_comment": "Round 2: every team once, with its bot. Each team's robot is found automatically: it is the robot whose ROBOT_NAME is the team's name. Pick a game's 4 teams with --pick.",
+  "robot_defaults": {
+    "step_timeout": 8.0,
+    "ack_timeout": 1.5,
+    "allow_reverse": true
+  },
+  "teams": [
+    {
+      "name": "Team 1",
+      "bot": "../teams/team1/bot.py"
+    },
+    {
+      "name": "Team 2",
+      "bot": "../teams/team2/bot.py"
+    },
+    {
+      "name": "Team 3",
+      "bot": "../teams/team3/bot.py"
+    },
+    {
+      "name": "Team 4",
+      "bot": "../teams/team4/bot.py"
+    },
+    {
+      "name": "Team 5",
+      "bot": "../teams/team5/bot.py"
+    },
+    {
+      "name": "Team 6",
+      "bot": "../teams/team6/bot.py"
+    },
+    {
+      "name": "Team 7",
+      "bot": "../teams/team7/bot.py"
+    },
+    {
+      "name": "Team 8",
+      "bot": "../teams/team8/bot.py"
+    },
+    {
+      "name": "Team 9",
+      "bot": "../teams/team9/bot.py"
+    },
+    {
+      "name": "Team 10",
+      "bot": "../teams/team10/bot.py"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "_comment": "Round 2: four KS0428 robots over Bluetooth. Set each name (or address) to what python -m zonerush scan shows for that robot's HM-10 module.",
+  "link": "ble",
+  "step_timeout": 8.0,
+  "ack_timeout": 1.5,
+  "allow_reverse": true,
+  "robots": {
+    "1": {
+      "name": "ZR-ROBOT-1",
+      "marker": 1,
+      "heading": "S"
+    },
+    "2": {
+      "name": "ZR-ROBOT-2",
+      "marker": 2,
+      "heading": "S"
+    },
+    "3": {
+      "name": "ZR-ROBOT-3",
+      "marker": 3,
+      "heading": "N"
+    },
+    "4": {
+      "name": "ZR-ROBOT-4",
+      "marker": 4,
+      "heading": "N"
+    }
+  }
+}

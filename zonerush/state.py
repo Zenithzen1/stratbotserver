@@ -28,7 +28,7 @@ class MatchState:
     owner: list[list[int]]                    # seat owning each cell, 0 = neutral
     level: list[list[int]]                    # 1 or 2 (neutral cells stay at 1)
     bots: dict[int, BotState]                 # seat -> its bot
-    turn: int = 1                             # the turn about to be played; 81
+    turn: int = 1                             # the turn about to be played; 81 = game over
     token: int = 1                            # seat holding the priority token this turn
 
     def in_bounds(self, r: int, c: int) -> bool:

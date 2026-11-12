@@ -49,6 +49,35 @@ def penalise(state: MatchState, seat: int, rules: Rules = Rules()):
     return s, [{"type": "penalty", "seat": seat, "turns": rules.penalty_freeze_turns}]
 
 
+def hold(state: MatchState, seat: int, rules: Rules = Rules()):
+    """4.4 late robot: "its bot stays frozen at home until the robot is placed".
+
+    Freezes the bot for the coming turn only, so the referee's game loop calls it before every
+    turn the robot is still missing. It never shortens a longer freeze already running.
+    Returns (new_state, events).
+    """
+    if seat not in SEATS:
+        raise ValueError(f"no such seat: {seat}")
+    s = copy.deepcopy(state)
+    bot = s.bots[seat]
+    bot.frozen_for = max(bot.frozen_for, 1)
+    bot.progress = 0
+    return s, [{"type": "late_robot", "seat": seat}]
+
+
+def referee_action(state: MatchState, action: dict, rules: Rules = Rules()):
+    """Apply one referee action between turns, e.g. {"type": "penalty", "seat": 2}.
+
+    The game loop and the replay both go through here, so a recorded game replays exactly.
+    Returns (new_state, events).
+    """
+    if action["type"] == "penalty":
+        return penalise(state, action["seat"], rules)
+    if action["type"] == "late_robot":
+        return hold(state, action["seat"], rules)
+    raise ValueError(f"unknown referee action: {action['type']!r}")
+
+
 def _check_actions(s: MatchState, actions: dict, rules: Rules, events: list):
     """Turn every requested action into one the rules allow.
 

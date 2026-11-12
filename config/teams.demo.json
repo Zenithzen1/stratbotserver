@@ -1,0 +1,35 @@
+{
+  "_comment": "Demo: krautbot and its robot (the ESP32 stand-in answering as 'Krauts', found automatically) against Raider, Builder and Greedy on simulated robots. Paths are relative to this file.",
+  "teams": [
+    {
+      "name": "Krauts",
+      "bot": "../../krautbot/bot.py"
+    },
+    {
+      "name": "Raider",
+      "bot": "../bots/raider.py",
+      "robot": {
+        "link": "sim"
+      }
+    },
+    {
+      "name": "Builder",
+      "bot": "../bots/builder.py",
+      "robot": {
+        "link": "sim"
+      }
+    },
+    {
+      "name": "Greedy",
+      "bot": "../bots/greedy.py",
+      "robot": {
+        "link": "sim"
+      }
+    }
+  ],
+  "robot_defaults": {
+    "step_timeout": 8.0,
+    "ack_timeout": 1.5,
+    "allow_reverse": true
+  }
+}

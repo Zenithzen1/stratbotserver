@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zone Rush map</title>
+<style>
+  :root {
+    --bg: #0b1220; --line: #22304d; --text: #e8eefc; --muted: #8a9bbd;
+    --v1: #1b2436; --v2: #2a3858; --v3: #3d5285;
+    --s1: #e5484d; --s2: #3e8ef7; --s3: #f5a524; --s4: #30a46c;
+    --ok: #5ee08b; --bad: #ff5a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  body { display: flex; flex-direction: column; align-items: center; overflow: hidden; }
+  header { width: 100%; display: flex; gap: 2vw; align-items: baseline; justify-content: center;
+    padding: 1vh 2vw; font-size: 2.2vh; color: var(--muted); }
+  header b { color: var(--text); font-size: 2.8vh; }
+  #status.paused { color: #ffc53d; font-weight: 700; }
+  #status.aborted { color: var(--bad); font-weight: 700; }
+  #board { --size: min(80vh, 94vw); width: var(--size); height: var(--size); display: grid;
+    grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr); gap: 3px;
+    background: var(--line); padding: 3px; border-radius: 8px; }
+  .cell { position: relative; display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; background: var(--v1); overflow: visible; }
+  .cell.v2 { background: var(--v2); } .cell.v3 { background: var(--v3); }
+  .cell .own { position: absolute; inset: 0; border-radius: 4px; }
+  .cell .num { position: relative; font-size: calc(var(--size) / 18); font-weight: 800;
+    color: rgba(255,255,255,.35); }
+  .cell .rc { position: absolute; left: 4%; top: 2%; font-size: calc(var(--size) / 60);
+    color: rgba(255,255,255,.4); }
+  .cell .up { position: absolute; right: 6%; top: 2%; font-size: calc(var(--size) / 40);
+    font-weight: 900; }
+  .robot { position: absolute; inset: 14%; border-radius: 50%; z-index: 3;
+    display: flex; align-items: center; justify-content: center; flex-direction: column;
+    color: #fff; font-weight: 900; font-size: calc(var(--size) / 28); line-height: 1;
+    border: 3px solid var(--ok); }
+  .robot small { font-size: calc(var(--size) / 75); font-weight: 600; opacity: .9; }
+  .robot.bad { border-color: var(--bad); box-shadow: 0 0 0 3px rgba(255,90,90,.35); }
+  .robot.offline { border-style: dashed; border-color: var(--muted); }
+  .robot.unchecked { border-color: rgba(255,255,255,.7); }
+  .arrow { position: absolute; width: 0; height: 0; z-index: 4;
+    border-left: calc(var(--size) / 90) solid transparent;
+    border-right: calc(var(--size) / 90) solid transparent;
+    border-bottom: calc(var(--size) / 45) solid #fff; }
+  .ghost { position: absolute; inset: 14%; border-radius: 50%; z-index: 2;
+    border: 3px dashed var(--bad); display: flex; align-items: center; justify-content: center;
+    color: var(--bad); font-weight: 800; font-size: calc(var(--size) / 60); }
+  .legend { display: flex; flex-wrap: wrap; gap: 1.6vw; justify-content: center;
+    padding: 1.2vh 2vw; color: var(--muted); font-size: 1.6vh; align-items: center; }
+  .legend i { display: inline-block; width: 1.8vh; height: 1.8vh; border-radius: 3px;
+    vertical-align: middle; margin-right: .4vw; }
+  .legend .ring { border-radius: 50%; border: 3px solid; width: 1.9vh; height: 1.9vh; }
+  #msg { color: var(--bad); font-size: 1.8vh; min-height: 2.4vh; text-align: center; padding: 0 2vw; }
+</style>
+</head>
+<body>
+<header><span><b id="turn">Turn 0</b> / <span id="turns">80</span></span>
+  <span>priority: <b id="token">-</b></span><span id="status">waiting</span></header>
+<div id="board"></div>
+<div id="msg"></div>
+<div class="legend">
+  <span><i style="background:var(--v1)"></i>1 point</span>
+  <span><i style="background:var(--v2)"></i>2 points</span>
+  <span><i style="background:var(--v3)"></i>3 points</span>
+  <span><i style="background:var(--s1)"></i>seat 1</span>
+  <span><i style="background:var(--s2)"></i>seat 2</span>
+  <span><i style="background:var(--s3)"></i>seat 3</span>
+  <span><i style="background:var(--s4)"></i>seat 4</span>
+  <span>faint = owned, strong = upgraded (&#8963;&#8963;), solid = home</span>
+  <span class="camleg"><i class="ring" style="border-color:var(--ok)"></i>camera OK</span>
+  <span><i class="ring" style="border-color:var(--bad)"></i>fault: place it by hand</span>
+  <span class="camleg"><i class="ring" style="border-color:var(--bad);border-style:dashed"></i>where the camera sees it</span>
+  <span>&#9650; = facing &middot; #n = marker</span>
+</div>
+<script>
+const HEX = { 1: "#e5484d", 2: "#3e8ef7", 3: "#f5a524", 4: "#30a46c" };
+const HOMES = ["0,0", "0,7", "7,7", "7,0"];
+const ROT = { N: 0, E: 90, S: 180, W: 270 };
+const $ = (id) => document.getElementById(id);
+const cells = [];
+for (let r = 0; r < 8; r++) { cells.push([]); for (let c = 0; c < 8; c++) {
+  const d = document.createElement("div"); d.className = "cell"; $("board").appendChild(d); cells[r].push(d);
+} }
+
+function arrowFor(heading) {
+  // a small triangle on the robot's edge, pointing the way it faces
+  const a = document.createElement("div"); a.className = "arrow";
+  const pos = { N: "top:2%;left:50%", E: "right:2%;top:50%", S: "bottom:2%;left:50%", W: "left:2%;top:50%" }[heading];
+  a.style.cssText = pos + `;transform:translate(${heading === "E" ? "50%" : "-50%"},${heading === "S" ? "50%" : "-50%"}) rotate(${ROT[heading]}deg)`;
+  return a;
+}
+
+function render(s) {
+  $("turn").textContent = `Turn ${s.turn}`; $("turns").textContent = s.turns;
+  $("token").textContent = s.seats[String(s.token)].name;
+  $("status").textContent = s.status; $("status").className = s.status;
+  const fleet = s.fleet || {}, msgs = [];
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const d = cells[r][c], o = s.owner[r][c], lvl = s.level[r][c], home = HOMES.includes(`${r},${c}`);
+    d.className = `cell v${s.map[r][c]}`;
+    d.innerHTML = `<div class="own"></div><span class="rc">${r},${c}</span><span class="num">${s.map[r][c]}</span>`;
+    if (o) {
+      const own = d.querySelector(".own");
+      own.style.background = HEX[o];
+      own.style.opacity = home ? 0.95 : lvl === 2 ? 0.7 : 0.33;
+      if (lvl === 2 && !home) d.insertAdjacentHTML("beforeend", '<span class="up">&#8963;&#8963;</span>');
+    }
+  }
+  for (const seat of ["1", "2", "3", "4"]) {
+    const info = s.seats[seat], f = fleet[seat];
+    const [r, c] = f ? f.pos : info.pos;
+    const bot = document.createElement("div");
+    bot.className = "robot"; bot.style.background = HEX[seat];
+    bot.innerHTML = `${seat}${f ? `<small>#${f.marker}</small>` : ""}`;
+    if (f) {
+      const cam = f.camera, rep = (s.robots || {})[seat];
+      if (!f.online) bot.classList.add("offline");
+      else if ((cam && cam.result !== "ok") || f.needs_placing || (rep && rep.result !== "ok")) bot.classList.add("bad");
+      else if (!cam) bot.classList.add("unchecked");
+      bot.appendChild(arrowFor(f.heading));
+      if (cam && cam.seen && (cam.seen[0] !== r || cam.seen[1] !== c)) {
+        const g = document.createElement("div"); g.className = "ghost"; g.textContent = `${seat} ${cam.facing}`;
+        cells[cam.seen[0]][cam.seen[1]].appendChild(g);
+      }
+      if (cam && cam.result !== "ok") msgs.push(`seat ${seat}: camera ${cam.result.replace("_", " ")}` +
+        (cam.seen ? ` (sees it on ${cam.seen[0]},${cam.seen[1]} facing ${cam.facing})` : ""));
+      if (rep && rep.result !== "ok") msgs.push(`seat ${seat}: robot ${rep.result}: place on ${rep.place_at} facing ${rep.facing}`);
+    }
+    cells[r][c].appendChild(bot);
+  }
+  $("msg").textContent = msgs.join("   |   ");
+  const camera = Object.values(fleet).some((f) => f.camera);
+  document.querySelectorAll(".camleg").forEach((e) => (e.style.display = camera ? "" : "none"));
+}
+
+const params = new URLSearchParams(location.search);
+if (params.has("once")) fetch("/state").then((r) => r.json()).then((s) => s && render(s));
+else new EventSource("/stream").onmessage = (m) => render(JSON.parse(m.data));
+</script>
+</body>
+</html>

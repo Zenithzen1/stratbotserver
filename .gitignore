@@ -1,3 +1,18 @@
 # Python's compiled cache files
 __pycache__/
 *.pyc
+
+# Bot logs written by play_game
+logs/
+
+# Game folders (records and bot logs) written by python -m zonerush
+games/
+
+# Printed marker images (python -m zonerush markers)
+markers/
+
+# Robots found by scanning (this laptop's Bluetooth addresses)
+config/robots.found.json
+
+# Teams' submissions (their code stays private)
+teams/

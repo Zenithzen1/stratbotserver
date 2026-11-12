@@ -1,0 +1,21 @@
+{
+  "_comment": "No hardware: four simulated robots.",
+  "link": "sim",
+  "step_timeout": 8.0,
+  "ack_timeout": 1.5,
+  "allow_reverse": true,
+  "robots": {
+    "1": {
+      "marker": 1
+    },
+    "2": {
+      "marker": 2
+    },
+    "3": {
+      "marker": 3
+    },
+    "4": {
+      "marker": 4
+    }
+  }
+}

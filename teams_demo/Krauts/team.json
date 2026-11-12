@@ -1,0 +1,4 @@
+{
+  "_comment": "Demo only: plays the bot in BotServer/krautbot, so edits there count straight away. A real team folder just holds bot.py.",
+  "bot": "../../../krautbot/bot.py"
+}

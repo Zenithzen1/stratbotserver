@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zone Rush</title>
+<style>
+  :root {
+    --bg: #0b1220; --panel: #121b2e; --line: #22304d; --text: #e8eefc; --muted: #8a9bbd;
+    --cell1: #16213a; --cell2: #1b2847; --cell3: #213056;
+    --s1: #e5484d; --s2: #3e8ef7; --s3: #f5a524; --s4: #30a46c;
+    --ice: #bfe6ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  header { display: flex; align-items: center; gap: 2vw; padding: 1.2vh 2vw;
+    border-bottom: 1px solid var(--line); }
+  .title { font-weight: 800; letter-spacing: .12em; font-size: 2.4vh; color: #5aa2ff; }
+  .title span { color: var(--muted); font-weight: 600; }
+  .turn { font-size: 3.2vh; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .turn small { color: var(--muted); font-weight: 500; }
+  .chip { padding: .5vh 1vw; border-radius: 999px; font-size: 1.8vh; font-weight: 600;
+    border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
+  .spacer { flex: 1; }
+  .status { padding: .6vh 1.2vw; border-radius: 999px; font-weight: 800; font-size: 1.9vh;
+    letter-spacing: .08em; text-transform: uppercase; background: #1e2b48; color: var(--muted); }
+  .status.running { background: #10391f; color: #5ee08b; }
+  .status.paused { background: #4a3405; color: #ffc53d; animation: blink 1.2s infinite; }
+  .status.finished { background: #13305e; color: #8cc0ff; }
+  .status.aborted { background: #4a1418; color: #ff8b8b; }
+  @keyframes blink { 50% { opacity: .45; } }
+
+  main { flex: 1; display: flex; gap: 2vw; padding: 2vh 2vw; min-height: 0; }
+  .boardwrap { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; }
+  #board { --size: min(82vh, 56vw); width: var(--size); height: var(--size);
+    display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(8, 1fr);
+    gap: .35vh; padding: .35vh; background: var(--line); border-radius: 1vh; }
+  .cell { position: relative; border-radius: .5vh; background: var(--cell1); overflow: hidden;
+    display: flex; align-items: center; justify-content: center; }
+  .cell.v2 { background: var(--cell2); } .cell.v3 { background: var(--cell3); }
+  .cell .tint { position: absolute; inset: 0; opacity: 0; transition: opacity .3s, background .3s; }
+  .cell .val { position: relative; font-size: calc(var(--size) / 22); font-weight: 700;
+    color: rgba(255,255,255,.28); }
+  .cell .up { position: absolute; top: 4%; right: 7%; font-size: calc(var(--size) / 34);
+    font-weight: 900; color: rgba(255,255,255,.85); display: none; }
+  .cell.upgraded .up { display: block; }
+  .cell .coord { position: absolute; left: 5%; bottom: 3%; font-size: calc(var(--size) / 70);
+    color: rgba(255,255,255,.18); }
+
+  .bot { position: absolute; width: 72%; height: 72%; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; z-index: 2;
+    font-weight: 900; font-size: calc(var(--size) / 26); color: #fff;
+    border: calc(var(--size) / 140) solid rgba(255,255,255,.9);
+    box-shadow: 0 .4vh 1.2vh rgba(0,0,0,.5); transition: transform .25s; }
+  .bot.frozen { border-color: var(--ice); box-shadow: 0 0 0 calc(var(--size)/140) var(--ice), 0 0 2vh var(--ice); }
+  .bot.frozen::after { content: "\2744"; position: absolute; top: -18%; right: -18%;
+    font-size: calc(var(--size) / 34); color: var(--ice); }
+  .bot.shield { animation: shield 1s ease-out 2; }
+  @keyframes shield { 0% { box-shadow: 0 0 0 0 rgba(255,255,255,.9); }
+                      100% { box-shadow: 0 0 0 calc(var(--size)/18) rgba(255,255,255,0); } }
+  .bot .prog { position: absolute; bottom: -22%; display: flex; gap: 12%; width: 60%;
+    justify-content: center; }
+  .bot .prog i { width: calc(var(--size)/110); height: calc(var(--size)/110); border-radius: 50%;
+    background: #fff; display: block; }
+
+  aside { flex: 1; display: flex; flex-direction: column; gap: 1.6vh; min-width: 0; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2vh; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 1vh;
+    padding: 1.3vh 1.2vw; border-left: .7vh solid var(--c); position: relative; }
+  .card .name { font-size: 2.2vh; font-weight: 700; white-space: nowrap; overflow: hidden;
+    text-overflow: ellipsis; }
+  .card .sub { color: var(--muted); font-size: 1.5vh; margin-top: .2vh; }
+  .card .score { font-size: 5vh; font-weight: 800; font-variant-numeric: tabular-nums;
+    margin-top: .4vh; line-height: 1.1; }
+  .card .tags { display: flex; flex-wrap: wrap; gap: .5vh; margin-top: .6vh; min-height: 2.6vh; }
+  .tag { font-size: 1.45vh; padding: .2vh .6vw; border-radius: .6vh; background: #1d2a46;
+    color: var(--muted); font-weight: 600; }
+  .tag.ice { background: #183a52; color: var(--ice); }
+  .tag.bad { background: #4a1418; color: #ffb1b1; }
+  .tag.tok { background: #33285c; color: #c8b8ff; }
+  .card .place { position: absolute; top: 1vh; right: 1vw; font-size: 3vh; font-weight: 900;
+    color: var(--c); }
+
+  .events { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 1vh;
+    padding: 1.2vh 1.2vw; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+  .events h2 { margin: 0 0 .8vh; font-size: 1.6vh; color: var(--muted); letter-spacing: .12em;
+    text-transform: uppercase; }
+  #log { list-style: none; margin: 0; padding: 0; overflow: hidden; }
+  #log li { font-size: 2vh; padding: .55vh 0; border-bottom: 1px solid #1a2540;
+    display: flex; gap: .8vw; align-items: baseline; }
+  #log li .t { color: var(--muted); font-size: 1.5vh; min-width: 3.2em;
+    font-variant-numeric: tabular-nums; }
+  #log b { color: var(--c); }
+
+  footer { display: none; align-items: center; gap: 1vw; padding: 1vh 2vw;
+    border-top: 1px solid var(--line); }
+  body.replay footer { display: flex; }
+  footer button, footer select { background: var(--panel); color: var(--text);
+    border: 1px solid var(--line); border-radius: .6vh; font-size: 1.8vh; padding: .5vh 1vw;
+    cursor: pointer; }
+  footer input[type=range] { flex: 1; }
+  footer .hint { color: var(--muted); font-size: 1.4vh; }
+
+  #final { position: fixed; inset: 0; background: rgba(5,9,18,.82); display: none;
+    align-items: center; justify-content: center; z-index: 10; cursor: pointer; }
+  #final.show { display: flex; }
+  #final .box { background: var(--panel); border: 1px solid var(--line); border-radius: 2vh;
+    padding: 4vh 4vw; min-width: 40vw; }
+  #final h1 { margin: 0 0 3vh; font-size: 4vh; letter-spacing: .1em; text-align: center; }
+  #final .row { display: flex; align-items: center; gap: 2vw; font-size: 3.2vh; padding: 1.2vh 0;
+    border-bottom: 1px solid var(--line); }
+  #final .row .p { font-weight: 900; width: 3em; color: var(--c); }
+  #final .row .n { flex: 1; font-weight: 700; }
+  #final .row .s { font-variant-numeric: tabular-nums; font-weight: 800; }
+  #final .row .k { color: var(--muted); font-size: 2vh; width: 6em; text-align: right; }
+  #final .note { color: var(--muted); text-align: center; margin-top: 2vh; font-size: 1.6vh; }
+</style>
+</head>
+<body>
+<header>
+  <div class="title">STRATEGYBOT <span>&middot; ZONE RUSH</span></div>
+  <div class="turn" id="turn">Turn 0 <small>/ 80</small></div>
+  <div class="chip" id="token">Priority: &ndash;</div>
+  <div class="spacer"></div>
+  <div class="status" id="status">Waiting</div>
+</header>
+<main>
+  <div class="boardwrap"><div id="board"></div></div>
+  <aside>
+    <div class="cards" id="cards"></div>
+    <div class="events"><h2>What happened</h2><ul id="log"></ul></div>
+  </aside>
+</main>
+<footer>
+  <button id="first" title="Start (Home)">&#9198;</button>
+  <button id="back" title="Back one turn (Left)">&#9664;</button>
+  <button id="play" title="Play / pause (Space)">&#9654;</button>
+  <button id="fwd" title="Forward one turn (Right)">&#9654;&#9654;</button>
+  <button id="last" title="End (End)">&#9197;</button>
+  <input type="range" id="slider" min="0" max="0" value="0">
+  <select id="speed" title="Speed">
+    <option value="1200">slow</option><option value="600" selected>normal</option>
+    <option value="250">fast</option><option value="80">very fast</option>
+  </select>
+  <span class="hint">Replay of a recorded game</span>
+</footer>
+<div id="final"><div class="box"><h1>FINAL</h1><div id="finalrows"></div>
+  <div class="note">Click anywhere to close</div></div></div>
+
+<script>
+const SEATS = ["1", "2", "3", "4"];
+const COL = { "1": "var(--s1)", "2": "var(--s2)", "3": "var(--s3)", "4": "var(--s4)" };
+const HEX = { "1": "#e5484d", "2": "#3e8ef7", "3": "#f5a524", "4": "#30a46c" };
+const HOMES = ["0,0", "0,7", "7,7", "7,0"];
+const STATUS = { ready: "Waiting to start", running: "Live", paused: "Paused",
+                 finished: "Final", aborted: "Stopped" };
+const $ = (id) => document.getElementById(id);
+
+// ---- board -------------------------------------------------------------------------
+const cells = [];
+for (let r = 0; r < 8; r++) {
+  cells.push([]);
+  for (let c = 0; c < 8; c++) {
+    const d = document.createElement("div");
+    d.className = "cell";
+    d.innerHTML = '<div class="tint"></div><div class="val"></div><div class="up">&#8963;&#8963;</div>'
+                + `<div class="coord">${r},${c}</div>`;
+    $("board").appendChild(d);
+    cells[r].push(d);
+  }
+}
+const bots = {};
+for (const s of SEATS) {
+  const b = document.createElement("div");
+  b.className = "bot";
+  b.style.background = HEX[s];
+  b.innerHTML = `${s}<div class="prog"></div>`;
+  bots[s] = b;
+}
+
+// ---- text ----------------------------------------------------------------------------
+const esc = (t) => String(t).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+function who(s, snap) {
+  const seat = snap.seats[String(s)];
+  return `<b style="--c:${COL[String(s)]}">${esc(seat.name)}</b>`;
+}
+const at = (cell) => `(${cell[0]},${cell[1]})`;
+
+function describe(snap) {
+  // The notable things from one turn, as short sentences.
+  const out = [];
+  for (const e of snap.events || []) {
+    const s = e.seat;
+    switch (e.type) {
+      case "take":
+        out.push(e.from ? `${who(s, snap)} raids ${who(e.from, snap)} at ${at(e.cell)} <b style="--c:#fff">+${e.bonus}</b>`
+                        : `${who(s, snap)} takes ${at(e.cell)}`); break;
+      case "upgrade": out.push(`${who(s, snap)} upgrades ${at(e.cell)}`); break;
+      case "shield": out.push(`${who(s, snap)} shields`); break;
+      case "caught": out.push(`${who(s, snap)} caught by ${who(e.by, snap)}'s shield: frozen`); break;
+      case "backfire": out.push(`${who(s, snap)}'s shield backfires: frozen`); break;
+      case "penalty": out.push(`Referee: time penalty for ${who(s, snap)} (frozen ${e.turns} turns)`); break;
+      case "late_robot": out.push(`${who(s, snap)} is waiting for its robot`); break;
+      case "ignored":
+        if (e.reason === "illegal") out.push(`${who(s, snap)} sent an illegal move (${esc(e.action)}): STAY`);
+        break;
+    }
+  }
+  for (const s of SEATS) {
+    const r = (snap.bots || {})[s];
+    if (!r) continue;
+    if (r.result === "late") out.push(`${who(s, snap)}'s bot was too slow: STAY`);
+    if (r.result === "error") out.push(`${who(s, snap)}'s bot crashed: STAY`);
+    if (r.result === "dead") out.push(`${who(s, snap)}'s bot is not running: STAY`);
+  }
+  return out;
+}
+
+// ---- drawing ------------------------------------------------------------------------
+function render(snap, logLines) {
+  if (!snap) return;
+  $("turn").innerHTML = `Turn ${snap.turn} <small>/ ${snap.turns}</small>`;
+  const tok = snap.seats[String(snap.token)];
+  $("token").innerHTML = `Priority: <b style="color:${HEX[String(snap.token)]}">${esc(tok.name)}</b>`;
+  const replaying = document.body.classList.contains("replay");
+  $("status").className = "status " + snap.status;
+  $("status").textContent = replaying && snap.status === "running" ? "Replay"
+                          : snap.status === "paused" && snap.turn === 0 ? "Waiting to start"
+                          : STATUS[snap.status] || snap.status;
+
+  for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+    const d = cells[r][c], owner = snap.owner[r][c], lvl = snap.level[r][c], v = snap.map[r][c];
+    const home = HOMES.includes(`${r},${c}`);
+    d.className = `cell v${v}` + (owner && lvl === 2 ? " upgraded" : "");
+    d.querySelector(".val").textContent = v;
+    const tint = d.querySelector(".tint");
+    tint.style.background = owner ? HEX[String(owner)] : "transparent";
+    tint.style.opacity = !owner ? 0 : home ? 0.9 : lvl === 2 ? 0.62 : 0.32;
+  }
+
+  const shielded = new Set((snap.events || []).filter((e) => e.type === "shield").map((e) => String(e.seat)));
+  for (const s of SEATS) {
+    const info = snap.seats[s], b = bots[s];
+    const [r, c] = info.pos;
+    if (b.parentNode !== cells[r][c]) cells[r][c].appendChild(b);
+    b.classList.toggle("frozen", info.frozen_for > 0);
+    b.classList.remove("shield");
+    if (shielded.has(s)) { void b.offsetWidth; b.classList.add("shield"); }
+    b.querySelector(".prog").innerHTML = "<i></i>".repeat(Math.min(info.progress, 3));
+  }
+
+  const done = snap.placings;
+  $("cards").innerHTML = SEATS.map((s) => {
+    const i = snap.seats[s], rep = (snap.bots || {})[s] || {};
+    const tags = [];
+    if (String(snap.token) === s) tags.push('<span class="tag tok">priority</span>');
+    if (i.frozen_for > 0) tags.push(`<span class="tag ice">&#10052; frozen ${i.frozen_for}</span>`);
+    if (i.cooldown > 0) tags.push(`<span class="tag">shield in ${i.cooldown}</span>`);
+    if (["late", "error", "dead"].includes(rep.result)) tags.push(`<span class="tag bad">bot ${rep.result}</span>`);
+    const rob = (snap.robots || {})[s];
+    if (rob && rob.result !== "ok") tags.push(`<span class="tag bad">robot ${rob.result}</span>`);
+    return `<div class="card" style="--c:${COL[s]}">
+      ${done ? `<div class="place">#${done[s]}</div>` : ""}
+      <div class="name">${esc(i.name)}</div>
+      <div class="sub">${i.colour} &middot; ${i.cells} ${i.cells === 1 ? "cell" : "cells"}</div>
+      <div class="score">${i.score}</div>
+      <div class="tags">${tags.join("")}</div></div>`;
+  }).join("");
+
+  $("log").innerHTML = logLines.slice(0, 16).map(([t, line]) =>
+    `<li><span class="t">T${t}</span><span>${line}</span></li>`).join("");
+
+  if (done && (snap.status === "finished" || snap.status === "aborted")) showFinal(snap);
+  else $("final").classList.remove("show");
+}
+
+let finalShownFor = null;
+function showFinal(snap) {
+  const key = `${snap.status}:${snap.turn}`;
+  if (finalShownFor === key) return;
+  finalShownFor = key;
+  const order = SEATS.slice().sort((a, b) => snap.placings[a] - snap.placings[b]);
+  const nth = { 1: "1st", 2: "2nd", 3: "3rd", 4: "4th" };
+  $("finalrows").innerHTML = order.map((s) => {
+    const i = snap.seats[s];
+    return `<div class="row" style="--c:${COL[s]}"><span class="p">${nth[snap.placings[s]]}</span>
+      <span class="n">${esc(i.name)}</span><span class="s">${i.score}</span>
+      <span class="k">${i.cells} ${i.cells === 1 ? "cell" : "cells"}</span></div>`;
+  }).join("");
+  document.querySelector("#final h1").textContent = snap.status === "aborted" ? "STOPPED" : "FINAL";
+  $("final").classList.add("show");
+}
+$("final").onclick = () => $("final").classList.remove("show");
+
+// ---- live mode ------------------------------------------------------------------------
+function live() {
+  const log = [];
+  let lastTurn = -1;
+  const es = new EventSource("/stream");
+  es.onmessage = (msg) => {
+    const snap = JSON.parse(msg.data);
+    if (snap.turn !== lastTurn) {
+      if (snap.turn < lastTurn) log.length = 0;          // a new game started
+      for (const line of describe(snap).reverse()) log.unshift([snap.turn, line]);
+      lastTurn = snap.turn;
+    }
+    render(snap, log);
+  };
+}
+
+// ---- replay mode ----------------------------------------------------------------------
+function replay(frames) {
+  document.body.classList.add("replay");
+  let i = 0, timer = null;
+  $("slider").max = frames.length - 1;
+  function show(n) {
+    i = Math.max(0, Math.min(frames.length - 1, n));
+    $("slider").value = i;
+    const log = [];
+    for (let k = Math.max(1, i - 15); k <= i; k++)
+      for (const line of describe(frames[k]).reverse()) log.unshift([frames[k].turn, line]);
+    render(frames[i], log);
+  }
+  function stop() { clearInterval(timer); timer = null; $("play").innerHTML = "&#9654;"; }
+  function play() {
+    if (i >= frames.length - 1) show(0);
+    $("play").innerHTML = "&#10074;&#10074;";
+    timer = setInterval(() => { if (i >= frames.length - 1) stop(); else show(i + 1); },
+                        Number($("speed").value));
+  }
+  $("play").onclick = () => (timer ? stop() : play());
+  $("back").onclick = () => { stop(); show(i - 1); };
+  $("fwd").onclick = () => { stop(); show(i + 1); };
+  $("first").onclick = () => { stop(); show(0); };
+  $("last").onclick = () => { stop(); show(frames.length - 1); };
+  $("slider").oninput = () => { stop(); show(Number($("slider").value)); };
+  $("speed").onchange = () => { if (timer) { stop(); play(); } };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === " ") { e.preventDefault(); $("play").click(); }
+    if (e.key === "ArrowLeft") $("back").click();
+    if (e.key === "ArrowRight") $("fwd").click();
+    if (e.key === "Home") $("first").click();
+    if (e.key === "End") $("last").click();
+  });
+  show(0);
+}
+
+// ?once        show the current board once, without a live connection (for screenshots)
+// ?turn=N      in a replay, open at turn N
+const params = new URLSearchParams(location.search);
+function once() {
+  fetch("/state").then((r) => r.json()).then((snap) => {
+    if (snap) render(snap, describe(snap).map((line) => [snap.turn, line]));
+  });
+}
+fetch("/replay").then((r) => (r.ok ? r.json() : null)).then((frames) => {
+  if (frames) {
+    replay(frames);
+    if (params.has("turn")) $("slider").value = params.get("turn"), $("slider").oninput();
+  } else if (params.has("once")) once();
+  else live();
+}).catch(() => (params.has("once") ? once() : live()));
+</script>
+</body>
+</html>

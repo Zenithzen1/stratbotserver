@@ -1,0 +1,7 @@
+{
+  "robot_defaults": {
+    "step_timeout": 8.0,
+    "ack_timeout": 1.5,
+    "allow_reverse": true
+  }
+}

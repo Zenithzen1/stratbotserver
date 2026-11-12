@@ -1,0 +1,26 @@
+{
+  "_comment": "Desk test: seat 1 is the ESP32 stand-in over Bluetooth, seats 2-4 are simulated robots.",
+  "link": "ble",
+  "step_timeout": 8.0,
+  "ack_timeout": 1.5,
+  "allow_reverse": true,
+  "robots": {
+    "1": {
+      "name": "ZR-STANDIN",
+      "marker": 1,
+      "heading": "S"
+    },
+    "2": {
+      "link": "sim",
+      "marker": 2
+    },
+    "3": {
+      "link": "sim",
+      "marker": 3
+    },
+    "4": {
+      "link": "sim",
+      "marker": 4
+    }
+  }
+}
